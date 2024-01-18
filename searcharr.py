@@ -1445,11 +1445,8 @@ class Searcharr(object):
         q_users = "DELETE FROM users where id=?;"
         q_access_groups = "DELETE FROM user_access_groups where user_id=?;"
         qa = (id,)
-<<<<<<< Updated upstream
-        util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
-=======
-        logger.debug(f"Executing query: [{q_users}] with args: [{qa}]")
-        logger.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q_users}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
         try:
             with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q_users, qa)
@@ -1457,14 +1454,13 @@ class Searcharr(object):
                 con.commit()
                 con.close()
         except sqlite3.Error as e:
-            logger.error(f"Error executing database queries [{q_users}] and [{q_access_groups}]: {e}")
+            util.log.error(f"Error executing database queries [{q_users}] and [{q_access_groups}]: {e}")
             raise
 
     def _add_access_group(self, name):
         q = "INSERT INTO access_groups (name) VALUES (?);"
         qa = (name,)
-        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
->>>>>>> Stashed changes
+        util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
             with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
@@ -1472,15 +1468,15 @@ class Searcharr(object):
                 con.close()
                 return True
         except sqlite3.Error as e:
-            logger.error(f"Error executing database query [{q}]: {e}")
+            util.log.error(f"Error executing database query [{q}]: {e}")
             raise
 
     def _remove_access_group(self, id):
         q_access_groups = "DELETE FROM access_groups where id=?;"
         q_user_access_groups = "DELETE FROM user_access_groups where user_id=?;"
         qa = (id,)
-        logger.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
-        logger.debug(f"Executing query: [{q_user_access_groups}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q_user_access_groups}] with args: [{qa}]")
         try:
             with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q_access_groups, qa)
@@ -1488,13 +1484,13 @@ class Searcharr(object):
                 con.commit()
                 con.close()
         except sqlite3.Error as e:
-            logger.error(f"Error executing database queries [{q_access_groups}] and [{q_user_access_groups}]: {e}")
+            util.log.error(f"Error executing database queries [{q_access_groups}] and [{q_user_access_groups}]: {e}")
             raise
 
     def _add_user_to_access_group(self, user_id, access_group_id):
         q = "INSERT INTO user_access_groups (user_id, access_group_id) VALUES (?, ?);"
         qa = (user_id, access_group_id)
-        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
             with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
@@ -1502,13 +1498,13 @@ class Searcharr(object):
                 con.close()
                 return True
         except sqlite3.Error as e:
-            logger.error(f"Error executing database query [{q}]: {e}")
+            util.log.error(f"Error executing database query [{q}]: {e}")
             raise
 
     def _remove_user_from_access_group(self, user_id, access_group_id):
         q = "DELETE FROM user_access_groups WHERE user_id=? AND access_group_id=?;"
         qa = (user_id, access_group_id)
-        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
             with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
@@ -1552,7 +1548,7 @@ class Searcharr(object):
 
         q = f"UPDATE {table} set permissions=? where id=?;"
         qa = permissions_list.join(",")
-        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+        util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
             with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
@@ -1560,7 +1556,7 @@ class Searcharr(object):
                 con.close()
                 return True
         except sqlite3.Error as e:
-            logger.error(f"Error executing database query [{q}]: {e}")
+            util.log.error(f"Error executing database query [{q}]: {e}")
             raise
 
     def _get_permissions(self, table, id):
@@ -1568,20 +1564,20 @@ class Searcharr(object):
 
         q = f"SELECT * FROM {table} WHERE id=?;"
         qa = (id,)
-        logger.debug(f"Executing query: [{q}] with args: [{qa}]...")
+        util.log.debug(f"Executing query: [{q}] with args: [{qa}]...")
         try:
             con, cur = self._get_con_cur()
             r = cur.execute(q, qa)
         except sqlite3.Error as e:
             r = None
-            logger.error(
+            util.log.error(
                 f"Error executing database query to look up {table} record from the database [{q}]: {e}"
             )
             return None
 
         if r:
             record = r.fetchone()
-            logger.debug(f"Query result for {table} lookup: {record}")
+            util.log.debug(f"Query result for {table} lookup: {record}")
             con.close()
             if record and record["id"] == id:
                 permissions += record["permissions"].split(",")
@@ -1592,20 +1588,20 @@ class Searcharr(object):
 
         q = "SELECT * FROM users_access_groups WHERE user_id=?;"
         qa = (user_id,)
-        logger.debug(f"Executing query: [{q}] with args: [{qa}]...")
+        util.log.debug(f"Executing query: [{q}] with args: [{qa}]...")
         try:
             con, cur = self._get_con_cur()
             r = cur.execute(q, qa)
         except sqlite3.Error as e:
             r = None
-            logger.error(
+            util.log.error(
                 f"Error executing database query to look up user's access_groups from the database [{q}]: {e}"
             )
             raise
 
         if r:
             records = r.fetchall()
-            logger.debug(f"Query result for group lookup: {record}")
+            util.log.debug(f"Query result for group lookup: {record}")
             con.close()
             for record in records:
                 groups.append(record["access_group_id"])
