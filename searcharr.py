@@ -7,7 +7,6 @@ https://github.com/toddrob99/searcharr
 import argparse
 import json
 import os
-import yaml
 import sqlite3
 from threading import Lock
 from urllib.parse import parse_qsl
@@ -24,7 +23,7 @@ import sonarr
 import readarr
 import settings
 import util
-from util import xlate
+from util import xlate, xlate_aliases
 from commands import Command
 from buttons import KeyboardButtons
 
@@ -422,15 +421,7 @@ class Searcharr(object):
         auth_level = self._authenticated(query.from_user.id)
         if not auth_level:
             query.message.reply_text(
-                xlate(
-                    "auth_required",
-                    commands=" OR ".join(
-                        [
-                            f"`/{c} <{xlate('password')}>`"
-                            for c in settings.searcharr_start_command_aliases
-                        ]
-                    ),
-                )
+                xlate_aliases("auth_required", settings.searcharr_start_command_aliases, "password")
             )
             query.message.delete()
             query.answer()
@@ -507,7 +498,7 @@ class Searcharr(object):
                 reply_message, reply_markup = self._prepare_response_users(
                     cid,
                     convo["results"],
-                    i-1,
+                    i - 1,
                     len(convo["results"]),
                 )
                 context.bot.edit_message_text(
@@ -551,13 +542,13 @@ class Searcharr(object):
                     reply_markup=reply_markup,
                 )
             elif convo["type"] == "users":
-                #if i >= len(convo["results"])/5:
+                # if i >= len(convo["results"])/5:
                 #    query.answer()
                 #    return
                 reply_message, reply_markup = self._prepare_response_users(
                     cid,
                     convo["results"],
-                    i+1,
+                    i + 1,
                     len(convo["results"]),
                 )
                 context.bot.edit_message_text(
@@ -1160,7 +1151,7 @@ class Searcharr(object):
             )
         if total_results > 1 and i < total_results - 1:
             keyboardNavRow.append(
-                buttons.nav.next(cid, i, total_results)
+                buttons.nav.next(cid, i)
             )
         keyboard.append(keyboardNavRow)
 
@@ -1198,14 +1189,14 @@ class Searcharr(object):
         if not add:
             if not r["id"]:
                 keyboardActRow.append(
-                    buttons.act.add(cid, i)
+                    buttons.act.add(kind, cid, i)
                 )
             else:
                 keyboardActRow.append(
-                    buttons.act.already_added(i)
+                    buttons.act.already_added(cid, i)
                 )
         keyboardActRow.append(
-            buttons.act.cancel(i)
+            buttons.act.cancel(cid, i)
         )
         if len(keyboardActRow):
             keyboard.append(keyboardActRow)
@@ -1241,7 +1232,7 @@ class Searcharr(object):
     def _prepare_response_users(self, cid, users, i, total_results):
         buttons = KeyboardButtons()
         keyboard = []
-        for u in users[i*5 : (i*5)+5]:
+        for u in users[i * 5 : (i * 5) + 5]:
             keyboard.append(
                 [
                     buttons.user.remove(u, cid),
@@ -1257,7 +1248,7 @@ class Searcharr(object):
         keyboardNavRow.append(
             buttons.nav.done(cid, i)
         )
-        if total_results/5 > 1 and (i+1)*5 < total_results:
+        if total_results / 5 > 1 and (i + 1) * 5 < total_results:
             keyboardNavRow.append(
                 buttons.nav.next(cid, i)
             )
@@ -1266,7 +1257,7 @@ class Searcharr(object):
 
         reply_message = xlate(
             "listing_users_pagination",
-            page_info=f"{i*5+1}-{min((i+1)*5, total_results)} of {total_results}",
+            page_info=f"{i * 5 + 1}-{min((i + 1) * 5, total_results)} of {total_results}",
         )
         return (reply_message, reply_markup)
 
