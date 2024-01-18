@@ -1299,12 +1299,11 @@ class Searcharr(object):
         updater.idle()
 
     def _create_conversation(self, id, username, kind, results):
-        con, cur = self._get_con_cur()
         q = "INSERT OR REPLACE INTO conversations (id, username, type, results) VALUES (?, ?, ?, ?)"
         qa = (id, username, kind, json.dumps(results))
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1366,8 +1365,7 @@ class Searcharr(object):
         qa = (id,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            con, cur = self._get_con_cur()
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1400,12 +1398,11 @@ class Searcharr(object):
             return {}
 
     def _update_add_data(self, cid, key, value):
-        con, cur = self._get_con_cur()
         q = "INSERT OR REPLACE INTO add_data (cid, key, value) VALUES (?, ?, ?)"
         qa = (cid, key, value)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1419,8 +1416,7 @@ class Searcharr(object):
         qa = (cid,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            con, cur = self._get_con_cur()
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1432,12 +1428,11 @@ class Searcharr(object):
             return False
 
     def _add_user(self, id, username, admin=""):
-        con, cur = self._get_con_cur()
         q = "INSERT OR REPLACE INTO users (id, username, admin) VALUES (?, ?, ?);"
         qa = (id, username, admin)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1447,12 +1442,75 @@ class Searcharr(object):
             raise
 
     def _remove_user(self, id):
-        con, cur = self._get_con_cur()
-        q = "DELETE FROM users where id=?;"
+        q_users = "DELETE FROM users where id=?;"
+        q_access_groups = "DELETE FROM user_access_groups where user_id=?;"
         qa = (id,)
+<<<<<<< Updated upstream
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
+=======
+        logger.debug(f"Executing query: [{q_users}] with args: [{qa}]")
+        logger.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
         try:
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
+                cur.execute(q_users, qa)
+                cur.execute(q_access_groups, qa)
+                con.commit()
+                con.close()
+        except sqlite3.Error as e:
+            logger.error(f"Error executing database queries [{q_users}] and [{q_access_groups}]: {e}")
+            raise
+
+    def _add_access_group(self, name):
+        q = "INSERT INTO access_groups (name) VALUES (?);"
+        qa = (name,)
+        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+>>>>>>> Stashed changes
+        try:
+            with self._get_con_cur() as (con, cur), DBLOCK:
+                cur.execute(q, qa)
+                con.commit()
+                con.close()
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Error executing database query [{q}]: {e}")
+            raise
+
+    def _remove_access_group(self, id):
+        q_access_groups = "DELETE FROM access_groups where id=?;"
+        q_user_access_groups = "DELETE FROM user_access_groups where user_id=?;"
+        qa = (id,)
+        logger.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
+        logger.debug(f"Executing query: [{q_user_access_groups}] with args: [{qa}]")
+        try:
+            with self._get_con_cur() as (con, cur), DBLOCK:
+                cur.execute(q_access_groups, qa)
+                cur.execute(q_user_access_groups, qa)
+                con.commit()
+                con.close()
+        except sqlite3.Error as e:
+            logger.error(f"Error executing database queries [{q_access_groups}] and [{q_user_access_groups}]: {e}")
+            raise
+
+    def _add_user_to_access_group(self, user_id, access_group_id):
+        q = "INSERT INTO user_access_groups (user_id, access_group_id) VALUES (?, ?);"
+        qa = (user_id, access_group_id)
+        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+        try:
+            with self._get_con_cur() as (con, cur), DBLOCK:
+                cur.execute(q, qa)
+                con.commit()
+                con.close()
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Error executing database query [{q}]: {e}")
+            raise
+
+    def _remove_user_from_access_group(self, user_id, access_group_id):
+        q = "DELETE FROM user_access_groups WHERE user_id=? AND access_group_id=?;"
+        qa = (user_id, access_group_id)
+        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+        try:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1473,6 +1531,7 @@ class Searcharr(object):
             util.log.error(
                 f"Error executing database query to look up users from the database [{q}]: {e}"
             )
+            raise
 
         if r:
             records = r.fetchall()
@@ -1483,14 +1542,98 @@ class Searcharr(object):
             f"Found no {'admin ' if admin else ''}users in the database (this seems wrong)."
         )
         return []
+    
+    def _update_permission(self, table, id, permission, action):
+        permissions_list = self._get_permissions(table, id)
+        if action == "add":
+            permissions_list.append(permission)
+        elif action == "remove":
+            permissions_list.remove(permission)
+
+        q = f"UPDATE {table} set permissions=? where id=?;"
+        qa = permissions_list.join(",")
+        logger.debug(f"Executing query: [{q}] with args: [{qa}]")
+        try:
+            with self._get_con_cur() as (con, cur), DBLOCK:
+                cur.execute(q, qa)
+                con.commit()
+                con.close()
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Error executing database query [{q}]: {e}")
+            raise
+
+    def _get_permissions(self, table, id):
+        permissions = []
+
+        q = f"SELECT * FROM {table} WHERE id=?;"
+        qa = (id,)
+        logger.debug(f"Executing query: [{q}] with args: [{qa}]...")
+        try:
+            con, cur = self._get_con_cur()
+            r = cur.execute(q, qa)
+        except sqlite3.Error as e:
+            r = None
+            logger.error(
+                f"Error executing database query to look up {table} record from the database [{q}]: {e}"
+            )
+            return None
+
+        if r:
+            record = r.fetchone()
+            logger.debug(f"Query result for {table} lookup: {record}")
+            con.close()
+            if record and record["id"] == id:
+                permissions += record["permissions"].split(",")
+        return permissions
+
+    def _get_user_groups(self, user_id):
+        groups = []
+
+        q = "SELECT * FROM users_access_groups WHERE user_id=?;"
+        qa = (user_id,)
+        logger.debug(f"Executing query: [{q}] with args: [{qa}]...")
+        try:
+            con, cur = self._get_con_cur()
+            r = cur.execute(q, qa)
+        except sqlite3.Error as e:
+            r = None
+            logger.error(
+                f"Error executing database query to look up user's access_groups from the database [{q}]: {e}"
+            )
+            raise
+
+        if r:
+            records = r.fetchall()
+            logger.debug(f"Query result for group lookup: {record}")
+            con.close()
+            for record in records:
+                groups.append(record["access_group_id"])
+        return groups
+
+    def _aggregate_user_permissions(self, user_id):
+        permissions = self._get_permissions("users", user_id)
+        group_ids = self._get_user_groups(user_id)
+
+        for group_id in group_ids:
+            group_permissions = self._get_permissions("groups", group_id)
+
+        permissions += group_permissions
+        return permissions
+
+    def _user_has_permission(self, user_id, permission):
+        permissions = self._aggregate_user_permissions("users", user_id)
+        if permission in permissions:
+            return True
+        else:
+            return False
 
     def _update_admin_access(self, user_id, admin=""):
-        con, cur = self._get_con_cur()
         q = "UPDATE users set admin=? where id=?;"
         qa = (str(admin), user_id)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with DBLOCK:
+            with self._get_con_cur() as (con, cur), DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1580,6 +1723,16 @@ class Searcharr(object):
                 key text,
                 value text,
                 primary key (cid, key)
+            );""",
+            """CREATE TABLE IF NOT EXISTS access_groups (
+                id integer primary key autoincrement,
+                name text not null,
+                permissions text
+            );""",
+            """CREATE TABLE IF NOT EXISTS user_access_groups (
+                user_access_group_id integer primary key autoincrement,
+                user_id integer not null,
+                access_group_id integer not null
             );""",
         ]
         for q in queries:
