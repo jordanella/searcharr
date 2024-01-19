@@ -15,7 +15,7 @@ from datetime import datetime
 
 from telegram import InlineKeyboardMarkup, InputMediaPhoto
 from telegram.error import BadRequest
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
 from log import set_up_logger
 import radarr
@@ -415,13 +415,21 @@ class Searcharr(object):
 
     def callback(self, update, context):
         query = update.callback_query
+        user_id = query.from_user.id
+        # Delete any outstanding reply message upon another interaction.
+        if user_id in context.chat_data:
+            context.bot.delete_message(
+                chat_id=query.message.chat.id,
+                message_id=context.chat_data[user_id],
+            )
+            del context.chat_data[user_id]
         util.log.debug(
             f"Received callback from [{query.from_user.username}]: [{query.data}]"
         )
         convo = self._get_conversation(query.data.split("^^^")[0])
         if settings.searcharr_allow_group_interaction and query.from_user.username != convo["username"]:
             return
-        auth_level = self._authenticated(query.from_user.id)
+        auth_level = self._authenticated(user_id)
         if not auth_level:
             query.message.reply_text(
                 xlate_aliases("auth_required", settings.searcharr_start_command_aliases, "password")
@@ -434,8 +442,6 @@ class Searcharr(object):
             query.answer()
             return
 
-        convo = self._get_conversation(query.data.split("^^^")[0])
-        # convo = self.conversations.get(query.data.split("^^^")[0])
         if not convo:
             query.message.reply_text(xlate("convo_not_found"))
             query.message.delete()
@@ -545,9 +551,6 @@ class Searcharr(object):
                     reply_markup=reply_markup,
                 )
             elif convo["type"] == "users":
-                # if i >= len(convo["results"])/5:
-                #    query.answer()
-                #    return
                 reply_message, reply_markup = self._prepare_response_users(
                     cid,
                     convo["results"],
@@ -1111,8 +1114,24 @@ class Searcharr(object):
                 query.message.reply_text(
                     xlate("unknown_error_removing_admin", user=i)
                 )
+        elif op == "user_view":
+            reply_message, reply_markup = self._prepare_response_user_overview(
+                cid,
+                i,
+                op_flags.get("u")
+            )
+            context.bot.edit_message_text(
+                chat_id=query.message.chat.id,
+                message_id=query.message.message_id,
+                text=reply_message,
+                reply_markup=reply_markup,
+                parse_mode="MarkdownV2"
+            )
 
         query.answer()
+
+    def handle_replies(self, update, context):
+        pass
 
     def _prepare_response(
         self,
@@ -1239,7 +1258,7 @@ class Searcharr(object):
             keyboard.append(
                 [
                     buttons.user.remove(u, cid),
-                    buttons.user.username(u, cid),
+                    buttons.user.username(u, i, cid),
                     buttons.user.admin(u, cid),
                 ]
             )
@@ -1264,12 +1283,91 @@ class Searcharr(object):
         )
         return (reply_message, reply_markup)
 
+    def _prepare_response_user_overview(self, cid, i, user_id):
+        user_id = int(user_id)
+        user = self._fetch_records("users", user_id)
+        buttons = KeyboardButtons()
+        keyboard = []
+        permissions = user["permissions"].split(",")
+        access_groups = []
+        for user_access_group in self._fetch_records("user_access_groups", user_id, "user_id"):
+            access_groups.append(
+                self._fetch_records("access_groups", user_access_group["access_group_id"])
+            )
+        keyboard.append(
+            [
+                buttons.user.heading("· •   Permissions   • ·", cid)
+            ]
+        )
+        if permissions == []:
+            keyboard.append(
+                [
+                    buttons.user.heading("User doesn't have any permissions.", cid)
+                ]
+            )
+        else:
+            for index, permission in enumerate(permissions):
+                keyboard.append(
+                    [
+                        buttons.user.heading(permission, cid),
+                        buttons.user.remove_user_permission(user, index, cid)
+                    ]
+                )
+        keyboard.append(
+            [
+                buttons.user.heading("Add", cid)
+            ]
+        )
+        keyboard.append(
+            [
+                buttons.user.heading("· •   Access Groups   • ·", cid)
+            ]
+        )
+        if access_groups == []:
+            keyboard.append(
+                [
+                    buttons.user.heading("User doesn't belong to any access groups.", cid)
+                ]
+            )
+        else:
+            for access_group in access_groups:
+                print(access_group)
+                keyboard.append(
+                    [
+                        buttons.user.heading(access_group["name"], cid),
+                        buttons.user.remove_user_group(user, int(access_group["id"]), cid)
+                    ]
+                )
+        keyboard.append(
+            [
+                buttons.user.heading("Add", cid)
+            ]
+        )
+        keyboard.append(
+            [
+                buttons.nav.return_to_users(cid, i),
+                buttons.nav.done(cid, i)
+            ]
+        )
+        reply_message = f"Viewing permissions and access groups of *{f"{user['username'] if user['username'] != 'None' else user_id}"}*\."
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        return (reply_message, reply_markup)
+
     def handle_error(self, update, context):
         util.log.error(f"Caught error: {context.error}")
         try:
             update.callback_query.answer()
         except Exception:
             pass
+
+    def test(self, update, context):
+        stored_message_id = None
+        reply_to_message_id = update.message.reply_to_message.message_id
+        print(update.message.reply_to_message.message_id)
+        print(context.chat_data)
+        if reply_to_message_id in context.chat_data:
+            print(context.chat_data.get(reply_to_message_id))
+            context.bot.edit_message_text(chat_id=update.message.chat_id, message_id=stored_message_id, text='This message has been edited.')
 
     def run(self):
         self._init_db()
@@ -1282,6 +1380,7 @@ class Searcharr(object):
                 updater.dispatcher.add_handler(CommandHandler(c, command._execute))
 
         updater.dispatcher.add_handler(CallbackQueryHandler(self.callback))
+        updater.dispatcher.add_handler(MessageHandler(Filters.reply, self.handle_replies))
         if not self.DEV_MODE:
             updater.dispatcher.add_error_handler(self.handle_error)
         else:
@@ -1564,10 +1663,8 @@ class Searcharr(object):
             util.log.error(f"Error executing database query [{q}]: {e}")
             raise
 
-    def _get_permissions(self, table, id):
-        permissions = []
-
-        q = f"SELECT * FROM {table} WHERE id=?;"
+    def _get_user(self, id):
+        q = "SELECT * FROM users WHERE id=?;"
         qa = (id,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]...")
         try:
@@ -1576,23 +1673,21 @@ class Searcharr(object):
         except sqlite3.Error as e:
             r = None
             util.log.error(
-                f"Error executing database query to look up {table} record from the database [{q}]: {e}"
+                f"Error executing database query to look up user record from the database [{q}]: {e}"
             )
             return None
 
         if r:
             record = r.fetchone()
-            util.log.debug(f"Query result for {table} lookup: {record}")
+            util.log.debug(f"Query result for user lookup: {record}")
             con.close()
             if record and record["id"] == id:
-                permissions += record["permissions"].split(",")
-        return permissions
+                return record
+        return None
 
-    def _get_user_groups(self, user_id):
-        groups = []
-
-        q = "SELECT * FROM users_access_groups WHERE user_id=?;"
-        qa = (user_id,)
+    def _fetch_records(self, table, value, param="id"):
+        q = f"SELECT * FROM {table} WHERE {param}=?;"
+        qa = (value,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]...")
         try:
             con, cur = self._get_con_cur()
@@ -1600,34 +1695,20 @@ class Searcharr(object):
         except sqlite3.Error as e:
             r = None
             util.log.error(
-                f"Error executing database query to look up user's access_groups from the database [{q}]: {e}"
+                f"Error executing database query to look up access group record from the database [{q}]: {e}"
             )
-            raise
+            return None
 
         if r:
             records = r.fetchall()
-            util.log.debug(f"Query result for group lookup: {records}")
             con.close()
-            for record in records:
-                groups.append(record["access_group_id"])
-        return groups
-
-    def _aggregate_user_permissions(self, user_id):
-        permissions = self._get_permissions("users", user_id)
-        group_ids = self._get_user_groups(user_id)
-
-        for group_id in group_ids:
-            group_permissions = self._get_permissions("groups", group_id)
-
-        permissions += group_permissions
-        return permissions
-
-    def _user_has_permission(self, user_id, permission):
-        permissions = self._aggregate_user_permissions("users", user_id)
-        if permission in permissions:
-            return True
+            util.log.debug(f"Query result for access group lookup: {records}")
+            if len(records) > 1:
+                return records
+            else:
+                return records[0]
         else:
-            return False
+            return None
 
     def _update_admin_access(self, user_id, admin=""):
         con, cur = self._get_con_cur()

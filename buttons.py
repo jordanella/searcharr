@@ -18,6 +18,12 @@ class NavButtons(object):
             xlate("done"), callback_data=f"{cid}^^^{i}^^^done"
         )
 
+    def return_to_users(self, cid, i):
+        return InlineKeyboardButton(
+            "< Return",
+            callback_data=f"{cid}^^^{i + 1}^^^prev",
+        )
+
 
 class ExternalButtons(object):
     def imdb(self, r):
@@ -112,16 +118,40 @@ class UserButtons(object):
             callback_data=f"{cid}^^^{u['id']}^^^remove_user",
         )
 
-    def username(self, u, cid):
+    def username(self, u, i, cid):
         return InlineKeyboardButton(
             f"{u['username'] if u['username'] != 'None' else u['id']}",
-            callback_data=f"{cid}^^^{u['id']}^^^noop",
+            callback_data=f"{cid}^^^{i}^^^user_view^^u={u['id']}",
         )
 
     def admin(self, u, cid):
         return InlineKeyboardButton(
             xlate("remove_admin_button") if u["admin"] else xlate("make_admin_button"),
             callback_data=f"{cid}^^^{u['id']}^^^{'remove_admin' if u['admin'] else 'make_admin'}",
+        )
+
+    def permission(self, permission, cid):
+        return InlineKeyboardButton(
+            permission,
+            callback_data=f"{cid}^^^{permission}^^^noop",
+        )
+
+    def heading(self, label, cid):
+        return InlineKeyboardButton(
+            label,
+            callback_data=f"{cid}^^^0^^^noop",
+        )
+
+    def remove_user_permission(self, u, permission, cid):
+        return InlineKeyboardButton(
+            "Remove",
+            callback_data=f"{cid}^^^{u['id']}^^^remove_user_permission^^p={permission}",
+        )
+
+    def remove_user_group(self, u, group_id, cid):
+        return InlineKeyboardButton(
+            "Remove",
+            callback_data=f"{cid}^^^{u['id']}^^^remove_user_group^^p={group_id}",
         )
 
 

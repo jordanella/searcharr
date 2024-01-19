@@ -12,7 +12,7 @@ class Start(Command):
     def _action(self, update, context):
         password = util.strip_entities(update.message)
         util.log.debug(f"{update}")
-        
+
         if password and password == settings.searcharr_admin_password:
             self.searcharr._add_user(
                 id=update.message.from_user.id,
