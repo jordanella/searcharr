@@ -1290,11 +1290,12 @@ class Searcharr(object):
         updater.idle()
 
     def _create_conversation(self, id, username, kind, results):
+        con, cur = self._get_con_cur()
         q = "INSERT OR REPLACE INTO conversations (id, username, type, results) VALUES (?, ?, ?, ?)"
         qa = (id, username, kind, json.dumps(results))
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1351,12 +1352,13 @@ class Searcharr(object):
         return None
 
     def _delete_conversation(self, id):
+        con, cur = self._get_con_cur()
         self._clear_add_data(id)
         q = "DELETE FROM conversations WHERE id=?;"
         qa = (id,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1389,11 +1391,12 @@ class Searcharr(object):
             return {}
 
     def _update_add_data(self, cid, key, value):
+        con, cur = self._get_con_cur()
         q = "INSERT OR REPLACE INTO add_data (cid, key, value) VALUES (?, ?, ?)"
         qa = (cid, key, value)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1403,11 +1406,12 @@ class Searcharr(object):
             raise
 
     def _clear_add_data(self, cid):
+        con, cur = self._get_con_cur()
         q = "DELETE FROM add_data WHERE cid=?;"
         qa = (cid,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1419,11 +1423,12 @@ class Searcharr(object):
             return False
 
     def _add_user(self, id, username, admin=""):
+        con, cur = self._get_con_cur()
         q = "INSERT OR REPLACE INTO users (id, username, admin) VALUES (?, ?, ?);"
         qa = (id, username, admin)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1433,13 +1438,14 @@ class Searcharr(object):
             raise
 
     def _remove_user(self, id):
+        con, cur = self._get_con_cur()
         q_users = "DELETE FROM users where id=?;"
         q_access_groups = "DELETE FROM user_access_groups where user_id=?;"
         qa = (id,)
         util.log.debug(f"Executing query: [{q_users}] with args: [{qa}]")
         util.log.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q_users, qa)
                 cur.execute(q_access_groups, qa)
                 con.commit()
@@ -1449,11 +1455,12 @@ class Searcharr(object):
             raise
 
     def _add_access_group(self, name):
+        con, cur = self._get_con_cur()
         q = "INSERT INTO access_groups (name) VALUES (?);"
         qa = (name,)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1463,13 +1470,14 @@ class Searcharr(object):
             raise
 
     def _remove_access_group(self, id):
+        con, cur = self._get_con_cur()
         q_access_groups = "DELETE FROM access_groups where id=?;"
         q_user_access_groups = "DELETE FROM user_access_groups where user_id=?;"
         qa = (id,)
         util.log.debug(f"Executing query: [{q_access_groups}] with args: [{qa}]")
         util.log.debug(f"Executing query: [{q_user_access_groups}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q_access_groups, qa)
                 cur.execute(q_user_access_groups, qa)
                 con.commit()
@@ -1479,11 +1487,12 @@ class Searcharr(object):
             raise
 
     def _add_user_to_access_group(self, user_id, access_group_id):
+        con, cur = self._get_con_cur()
         q = "INSERT INTO user_access_groups (user_id, access_group_id) VALUES (?, ?);"
         qa = (user_id, access_group_id)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1493,11 +1502,12 @@ class Searcharr(object):
             raise
 
     def _remove_user_from_access_group(self, user_id, access_group_id):
+        con, cur = self._get_con_cur()
         q = "DELETE FROM user_access_groups WHERE user_id=? AND access_group_id=?;"
         qa = (user_id, access_group_id)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1529,8 +1539,9 @@ class Searcharr(object):
             f"Found no {'admin ' if admin else ''}users in the database (this seems wrong)."
         )
         return []
-    
+
     def _update_permission(self, table, id, permission, action):
+        con, cur = self._get_con_cur()
         permissions_list = self._get_permissions(table, id)
         if action == "add":
             permissions_list.append(permission)
@@ -1541,7 +1552,7 @@ class Searcharr(object):
         qa = permissions_list.join(",")
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()
@@ -1592,7 +1603,7 @@ class Searcharr(object):
 
         if r:
             records = r.fetchall()
-            util.log.debug(f"Query result for group lookup: {record}")
+            util.log.debug(f"Query result for group lookup: {records}")
             con.close()
             for record in records:
                 groups.append(record["access_group_id"])
@@ -1616,11 +1627,12 @@ class Searcharr(object):
             return False
 
     def _update_admin_access(self, user_id, admin=""):
+        con, cur = self._get_con_cur()
         q = "UPDATE users set admin=? where id=?;"
         qa = (str(admin), user_id)
         util.log.debug(f"Executing query: [{q}] with args: [{qa}]")
         try:
-            with self._get_con_cur() as (con, cur), DBLOCK:
+            with DBLOCK:
                 cur.execute(q, qa)
                 con.commit()
                 con.close()

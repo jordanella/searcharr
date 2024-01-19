@@ -1,5 +1,6 @@
 from commands import Command
 import settings
+import util
 from util import xlate, xlate_aliases
 
 
@@ -23,6 +24,7 @@ class Users(Command):
             kind="users",
             results=results,
         )
+        util.log.debug("Conversation created.")
 
         if not len(results):
             update.message.reply_text(xlate("no_users_found"))
