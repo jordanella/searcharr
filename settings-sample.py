@@ -12,6 +12,7 @@ searcharr_language = "en-us"  # yml file in the lang folder
 searcharr_start_command_aliases = ["start"]  # Override /start command
 searcharr_help_command_aliases = ["help"]  # Override /help command
 searcharr_users_command_aliases = ["users"]  # Override /users command
+searcharr_allow_group_interaction = False
 
 # Telegram
 tgram_token = ""

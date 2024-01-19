@@ -418,6 +418,9 @@ class Searcharr(object):
         util.log.debug(
             f"Received callback from [{query.from_user.username}]: [{query.data}]"
         )
+        convo = self._get_conversation(query.data.split("^^^")[0])
+        if settings.searcharr_allow_group_interaction and query.from_user.username != convo["username"]:
+            return
         auth_level = self._authenticated(query.from_user.id)
         if not auth_level:
             query.message.reply_text(
