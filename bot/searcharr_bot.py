@@ -14,8 +14,8 @@ from bot.utils.log import set_up_logger
 from bot.utils.database import init_db
 from bot.commands import register_commands
 from bot.callbacks import main_callback_handler
-from config import settings
 from config.language import load_language
+import settings
 
 
 class SearcharrBot:

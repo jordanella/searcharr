@@ -6,7 +6,7 @@ By Todd Roberts
 https://github.com/toddrob99/searcharr
 """
 from bot.utils.log import set_up_logger
-from config import settings
+import settings
 
 logger = set_up_logger("radarr_service", False, False)
 

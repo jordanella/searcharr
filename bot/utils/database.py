@@ -14,8 +14,8 @@ from bot.utils.log import set_up_logger
 
 logger = set_up_logger("database", False, False)
 
-DBPATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))), "data")
-DBFILE = "db"
+DBPATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))), "data")
+DBFILE = "searcharr.db"
 DBLOCK = Lock()
 
 

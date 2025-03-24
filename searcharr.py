@@ -8,8 +8,8 @@ https://github.com/toddrob99/searcharr
 import argparse
 
 from bot.searcharr_bot import SearcharrBot
-from config import settings
 from bot.utils.log import set_up_logger
+import settings
 
 __version__ = "3.4.0"
 
